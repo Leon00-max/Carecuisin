@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard,
+  HomeIcon,
   ClipboardList,
   UserPlus,
   LogOut,
@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { href: '/dietitian/dashboard',   label: 'Dashboard',     icon: LayoutDashboard },
+  { href: '/dietitian/dashboard',   label: 'Home ',     icon: HomeIcon },
   { href: '/dietitian/create-plan', label: 'Create Plan',   icon: ClipboardList },
   { href: '/dietitian/refer',       label: 'Refer to Chef', icon: UserPlus },
 ];

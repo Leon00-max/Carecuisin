@@ -325,7 +325,7 @@ export default function HomePage(){
             </div>
             <div className="absolute inset-0 flex items-end p-6 pointer-events-none">
               <div className="bg-white/90 backdrop-blur-sm rounded-xl px-5 py-3 border border-surface-100 shadow-sm">
-                <p className="text-sm font-bold text-surface-900">Group 6 — University of Buea, 2026</p>
+                <p className="text-sm font-bold text-surface-900">Group 6  University of Buea, 2026</p>
                 <p className="text-xs text-surface-500">CSC 404 · Supervised by Dr. Ali Joan Beri Wacka</p>
               </div>
             </div>
@@ -350,6 +350,10 @@ export default function HomePage(){
 
       {/* ───── SECTION 5: CTA + FOOTER ───── */}
       <section id="contact" className="relative py-24 sm:py-32 overflow-hidden" style={{background:'linear-gradient(135deg,#0f172a 0%,#1e3a8a 50%,#1e40af 100%)'}}>
+            <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0"
+              style={{ opacity: 0.3 }} >
+             <source src="videos/IMG_1468.MOV" type="video/mp4" />
+           </video>
         <div className="absolute inset-0 opacity-5" style={{backgroundImage:'linear-gradient(white 1px,transparent 1px),linear-gradient(90deg,white 1px,transparent 1px)',backgroundSize:'40px 40px'}}/>
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10 blur-3xl" style={{background:'#2563eb'}}/>
         <div className="relative max-w-4xl mx-auto px-6 sm:px-12 text-center">
@@ -358,10 +362,10 @@ export default function HomePage(){
             Take control of<br/>
             <span className="bg-clip-text text-transparent" style={{backgroundImage:'linear-gradient(90deg,#60a5fa,#34d399)'}}>your health today.</span>
           </h2>
-          <p className="text-blue-200 text-lg max-w-xl mx-auto mb-10 leading-relaxed">Join CareCuisin — it's free to start. Patients get immediate access. Professionals reviewed within 48 hours.</p>
+          <p className="text-blue-200 text-lg max-w-xl mx-auto mb-10 leading-relaxed">Join CareCuisin  it's free to start. Patients get immediate access. Professionals reviewed within 48 hours.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
-            <Link href="/signup" className="px-10 py-4 rounded-2xl bg-primary-500 text-white font-bold text-base hover:bg-primary-400 transition-all shadow-2xl shadow-blue-900/60 w-full sm:w-auto">Create your account →</Link>
-            <Link href="/login" className="px-10 py-4 rounded-2xl border border-blue-400/40 text-white font-bold text-base hover:bg-white/10 transition-colors w-full sm:w-auto">Sign in</Link>
+            <Link href="auth/signup" className="px-10 py-4 rounded-2xl bg-primary-500 text-white font-bold text-base hover:bg-primary-400 transition-all shadow-2xl shadow-blue-900/60 w-full sm:w-auto">Create your account →</Link>
+            <Link href="auth/login" className="px-10 py-4 rounded-2xl border border-blue-400/40 text-white font-bold text-base hover:bg-white/10 transition-colors w-full sm:w-auto">Sign in</Link>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 text-blue-300/60 text-xs">
             {['Dietitian-guided','Chefs verified','Privacy protected','Built for Buea'].map((t,i,a)=>(
@@ -396,7 +400,7 @@ export default function HomePage(){
                 <p>University of Buea</p>
                 <p>Department of Computer Science</p>
                 <p>CSC 404 — Group 6</p>
-                <a href="mailto:group6@carecuisin.cm" className="text-primary-400 hover:text-primary-300 transition-colors block mt-2">group6@carecuisin.cm</a>
+                <a href="mailto:group6@carecuisin.com" className="text-primary-400 hover:text-primary-300 transition-colors block mt-2">group6@carecuisin.com</a>
               </div>
             </div>
           </div>

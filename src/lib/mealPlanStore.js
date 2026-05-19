@@ -1,110 +1,122 @@
 /**
  * lib/mealPlanStore.js
  *
- * Single source of truth for meal plans while we’re on localStorage.
- * Swap each function body for a Supabase call later.
+ * Single source of truth for all meal plan data.
+ * Mirrors the Meal_Plans + Clinical_Notes ERD tables.
+ *
+ * PRIVACY RULE (enforced here, not just in the UI):
+ *   getMealPlanForChef()  — strips _clinical before returning
+ *   getMealPlanForPatient() — strips _clinical before returning
+ *   getMealPlanForDietitian() — returns full record including _clinical
+ *
+ * Replace each function body with a Supabase call when wiring backend.
  */
 
-const MEAL_PLANS_KEY = 'cc_meal_plans';
-const CLINICAL_NOTES_KEY = 'cc_clinical_notes';
+const PLANS_KEY = 'cc_meal_plans';
 
 /* ─── Raw storage ─────────────────────────────────────────── */
 
-function getMealPlans() {
+export function getAllMealPlans() {
   if (typeof window === 'undefined') return [];
   try {
-    return JSON.parse(localStorage.getItem(MEAL_PLANS_KEY) || '[]');
-  } catch (_) {
-    return [];
-  }
+    return JSON.parse(localStorage.getItem(PLANS_KEY) || '[]');
+  } catch (_) { return []; }
 }
 
-function saveMealPlans(plans) {
-  localStorage.setItem(MEAL_PLANS_KEY, JSON.stringify(plans));
-}
-
-function getClinicalNotes() {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(CLINICAL_NOTES_KEY) || '[]');
-  } catch (_) {
-    return [];
-  }
-}
-
-function saveClinicalNotes(notes) {
-  localStorage.setItem(CLINICAL_NOTES_KEY, JSON.stringify(notes));
+function savePlans(plans) {
+  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
+  window.dispatchEvent(new StorageEvent('storage', {
+    key: PLANS_KEY,
+    newValue: JSON.stringify(plans),
+  }));
 }
 
 /* ─── Create ──────────────────────────────────────────────── */
 
 /**
- * createMealPlan — called by the dietitian after filling the weekly form.
- * @param plan { patientId, dietitianId, startDate, meals: { public, clinical } }
- * @returns the saved plan object
+ * saveMealPlan — called from dietitian create-plan page.
+ *
+ * payload shape:
+ * {
+ *   patientId, dietitianId, title, description,
+ *   startDate, endDate, details (array of day objects),
+ *   status: 'draft' | 'active' | 'referred' | 'completed',
+ *   _clinical: {
+ *     medicalRationale, clinicalTargets, allergyFlags
+ *   }
+ * }
+ *
+ * _clinical is stored in the SAME record for localStorage MVP.
+ * When Supabase is wired, split into Meal_Plans + Clinical_Notes tables.
  */
-export function createMealPlan({ patientId, dietitianId, startDate, meals }) {
-  const plans = getMealPlans();
-
-  const publicMeals = {};
-  const clinicalMeals = {};
-
-  for (const day of Object.keys(meals)) {
-    publicMeals[day] = {};
-    clinicalMeals[day] = {};
-    for (const mealType of Object.keys(meals[day])) {
-      publicMeals[day][mealType] = meals[day][mealType].public || '';
-      clinicalMeals[day][mealType] = meals[day][mealType].clinical || '';
-    }
-  }
+export function saveMealPlan(payload) {
+  const plans  = getAllMealPlans();
+  const exists = plans.findIndex(p => p.id === payload.id);
 
   const plan = {
-    id: `MP-${Date.now()}`,
-    patientId,
-    dietitianId,
-    startDate,
-    meals: publicMeals,          // safe for patient & chef
-    status: 'active',
-    createdAt: new Date().toISOString(),
+    ...payload,
+    id:        payload.id || `PLN-${Date.now()}`,
+    createdAt: payload.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
   };
 
-  plans.push(plan);
-  saveMealPlans(plans);
+  if (exists !== -1) {
+    plans[exists] = plan;
+  } else {
+    plans.push(plan);
+  }
 
-  // Store clinical notes separately so they never leak
-  const clinicalNote = {
-    id: `CN-${plan.id}`,
-    planId: plan.id,
-    meals: clinicalMeals,
-    createdAt: new Date().toISOString(),
-  };
-
-  const notes = getClinicalNotes();
-  notes.push(clinicalNote);
-  saveClinicalNotes(notes);
-
-  return { plan, clinicalNote };
+  savePlans(plans);
+  return plan;
 }
 
 /* ─── Reads ───────────────────────────────────────────────── */
 
-/** Get the latest active meal plan for a patient */
-export function getLatestMealPlanForPatient(patientId) {
-  return getMealPlans()
-    .filter(p => p.patientId === patientId && p.status === 'active')
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0]
-    || null;
+export function getMealPlanById(id) {
+  return getAllMealPlans().find(p => p.id === id) || null;
 }
 
-/** Get all plans a dietitian has created */
-export function getPlansByDietitian(dietitianId) {
-  return getMealPlans()
-    .filter(p => p.dietitianId === dietitianId)
+/** Full record including _clinical — dietitian only */
+export function getMealPlansForDietitian(dietitianId) {
+  return getAllMealPlans().filter(p => p.dietitianId === dietitianId);
+}
+
+/** Strips _clinical — safe for patient */
+export function getMealPlansForPatient(patientId) {
+  return getAllMealPlans()
+    .filter(p => p.patientId === patientId)
+    .map(stripClinical);
+}
+
+/** Strips _clinical — safe for chef */
+export function getMealPlanForChef(planId) {
+  const plan = getMealPlanById(planId);
+  return plan ? stripClinical(plan) : null;
+}
+
+/** Active plan for a specific patient (latest active) */
+export function getActivePlanForPatient(patientId) {
+  const plans = getMealPlansForPatient(patientId)
+    .filter(p => p.status === 'active' || p.status === 'referred')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return plans[0] || null;
 }
 
-/** Get the clinical notes for a specific plan (dietitian + admin only) */
-export function getClinicalNotesByPlanId(planId) {
-  const notes = getClinicalNotes();
-  return notes.find(n => n.planId === planId) || null;
+/* ─── Update ──────────────────────────────────────────────── */
+
+export function updateMealPlanStatus(id, status) {
+  const plans = getAllMealPlans();
+  const i     = plans.findIndex(p => p.id === id);
+  if (i === -1) return null;
+  plans[i] = { ...plans[i], status, updatedAt: new Date().toISOString() };
+  savePlans(plans);
+  return plans[i];
+}
+
+/* ─── Privacy helper ──────────────────────────────────────── */
+
+function stripClinical(plan) {
+  const safe = { ...plan };
+  delete safe._clinical;
+  return safe;
 }

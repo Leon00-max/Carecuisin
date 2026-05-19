@@ -1,8 +1,8 @@
 import Link from 'next/link';
-import { LayoutDashboard, UtensilsCrossed, AlertCircle, LogOut } from 'lucide-react';
+import { HomeIcon, UtensilsCrossed, AlertCircle, LogOut } from 'lucide-react';
 
 const NAV = [
-  { href: '/patient/dashboard', label: 'Dashboard',  icon: LayoutDashboard },
+  { href: '/patient/dashboard', label: 'Home',  icon: HomeIcon },
   { href: '/patient/meal-plan', label: 'Meal Plan',  icon: UtensilsCrossed },
   { href: '/patient/complaints',label: 'Complaints', icon: AlertCircle     },
 ];

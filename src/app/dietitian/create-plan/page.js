@@ -3,18 +3,27 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Eye, EyeOff, ArrowLeft, UserCheck, Calendar, Coffee, Sun, Moon, Apple } from 'lucide-react';
-import { createMealPlan } from '@/lib/mealPlanStore';
-import { getCurrentUserId } from '@/lib/userStore';
+import { saveMealPlan } from '@/lib/mealPlanStore';
+import { getCurrentUserId, getUserById } from '@/lib/userStore';
 
-function getPatients() {
-  try {
-    const step1 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step1') || '{}');
-    const step2 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step2') || '{}');
-    if (step1.fullName) {
-      return [{ id: 'P-001', name: step1.fullName, condition: step2.conditions?.[0] || 'General Nutrition' }];
-    }
-  } catch (_) {}
-  return [{ id: 'P-DEMO', name: 'John Sample', condition: 'Hypertension' }];
+function getPatientsWithConditions() {
+  const allUsers = getUsers();
+  return allUsers
+    .filter(u => u.role === 'patient')
+    .map(u => {
+      let condition = 'Unknown';
+      try {
+        // Read the patient's Step 2 onboarding data (contains medical conditions)
+        const step2 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step2') || '{}');
+        // Use the first condition if available
+        condition = step2.conditions?.[0] || 'General';
+      } catch (_) {}
+      return {
+        id: u.id,
+        name: u.fullName || 'Patient',
+        condition,
+      };
+    });
 }
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
@@ -27,9 +36,11 @@ export default function CreatePlanPage() {
   const [showPrivate, setShowPrivate] = useState(false);
 
   useEffect(() => {
-    const data = getPatients();
+    
+    const data = getPatientsWithConditions();
     setPatients(data);
     if (data.length > 0) setSelectedPatient(data[0].id);
+
   }, []);
 
   const [meals, setMeals] = useState(
@@ -61,7 +72,7 @@ export default function CreatePlanPage() {
   const patientId = selectedPatient; // currently holds the patient ID from the dropdown
   const dietitianId = getCurrentUserId(); // from lib/userStore
 
-  const { plan, clinicalNote } = createMealPlan({
+  const { plan, clinicalNote } = saveMealPlan({
     patientId,
     dietitianId,
     startDate: new Date().toISOString(),
