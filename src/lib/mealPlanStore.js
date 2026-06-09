@@ -12,23 +12,18 @@
  * Replace each function body with a Supabase call when wiring backend.
  */
 
+import { readCollection, writeCollection } from './localDb';
+
 const PLANS_KEY = 'cc_meal_plans';
 
 /* ─── Raw storage ─────────────────────────────────────────── */
 
 export function getAllMealPlans() {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(PLANS_KEY) || '[]');
-  } catch (_) { return []; }
+  return readCollection(PLANS_KEY);
 }
 
 function savePlans(plans) {
-  localStorage.setItem(PLANS_KEY, JSON.stringify(plans));
-  window.dispatchEvent(new StorageEvent('storage', {
-    key: PLANS_KEY,
-    newValue: JSON.stringify(plans),
-  }));
+  writeCollection(PLANS_KEY, plans);
 }
 
 /* ─── Create ──────────────────────────────────────────────── */
@@ -100,6 +95,15 @@ export function getActivePlanForPatient(patientId) {
     .filter(p => p.status === 'active' || p.status === 'referred')
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
   return plans[0] || null;
+}
+
+/** Latest safe patient plan, preferring active/referred plans */
+export function getLatestMealPlanForPatient(patientId) {
+  const plans = getMealPlansForPatient(patientId)
+    .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+  const active = plans.find(p => p.status === 'active' || p.status === 'referred');
+  return active || plans[0] || null;
 }
 
 /* ─── Update ──────────────────────────────────────────────── */

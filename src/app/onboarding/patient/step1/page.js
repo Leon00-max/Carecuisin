@@ -85,6 +85,7 @@ export default function PatientStep1() {
 
   /* ── On mount: load signup pre-fill + restore any saved step1 data ── */
   useEffect(() => {
+    queueMicrotask(() => {
     // 1. Pre-fill from signup
     try {
       const signupRaw = localStorage.getItem('cc_signup');
@@ -110,6 +111,7 @@ export default function PatientStep1() {
         setSelectedReasons(saved.reasons   || []);
       }
     } catch (_) {}
+    });
   }, []);
 
   /* ── Toggle a reason chip ── */

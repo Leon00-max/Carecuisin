@@ -101,8 +101,8 @@ function SignupForm() {
       // ★ Correct redirect paths (no more typos)
       const destination =
         role === 'patient'   ? '/onboarding/patient/step1'   :
-        role === 'dietitian' ? '/onboarding/dietitiant/step1' :
-        role === 'chef'      ? '/onboarding/chief/step1'     : '/';
+        role === 'dietitian' ? '/onboarding/dietitian/step1' :
+        role === 'chef'      ? '/onboarding/chef/step1'      : '/';
       router.push(destination);
     } catch (err) {
       setApiError(err.message || 'Something went wrong. Please try again.');

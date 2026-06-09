@@ -2,112 +2,202 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Users, ClipboardCheck, Activity, ArrowRight, PlusCircle } from 'lucide-react';
+import {
+  Bell,
+  CalendarClock,
+  CheckSquare,
+  ClipboardList,
+  MessageSquare,
+  Send,
+  Stethoscope,
+  Users,
+  Video,
+} from 'lucide-react';
+import {
+  CONSULTATIONS,
+  DASHBOARD_TASKS,
+  DIETITIAN_PATIENTS,
+  DIETITIAN_STATS,
+  statusTone,
+} from '@/lib/dietitianPortalData';
+import { getCurrentUser, getUsers } from '@/lib/userStore';
 
-/* ── Helpers ── */
-function getPatients() {
-  const patients = [];
-  try {
-    const step1 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step1') || '{}');
-    const step2 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step2') || '{}');
-    if (step1.fullName) {
-      patients.push({
-        id: 'P-001',
-        name: step1.fullName,
-        condition: step2.conditions?.[0] || 'General',
-        status: 'Needs Plan',
-      });
-    }
-  } catch (_) {}
-  if (patients.length === 0) {
-    patients.push({ id: 'P-DEMO', name: 'John Sample', condition: 'Hypertension', status: 'Needs Plan' });
-  }
-  return patients;
+function initials(name) {
+  return String(name || 'Patient')
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 }
 
-/* ────────────────────────────────────────────────────────────
-   PAGE
-─────────────────────────────────────────────────────────── */
+function metricTone(tone) {
+  if (tone === 'success') return 'border-success/20 bg-success/10 text-success';
+  if (tone === 'warning') return 'border-warning/20 bg-warning/10 text-warning';
+  if (tone === 'surface') return 'border-surface-100 bg-surface-50 text-surface-600';
+  return 'border-primary-100 bg-primary-50 text-primary-700';
+}
+
 export default function DietitianDashboard() {
-  const [patients, setPatients] = useState([]);
+  const [dietitianName, setDietitianName] = useState('Dr. Ambe Florence');
+  const [patients, setPatients] = useState(DIETITIAN_PATIENTS);
 
   useEffect(() => {
-    setPatients(getPatients());
+    queueMicrotask(() => {
+      const dietitian = getCurrentUser();
+      const storedPatients = getUsers()
+        .filter(user => user.role === 'patient')
+        .map((user, index) => ({
+          ...DIETITIAN_PATIENTS[index % DIETITIAN_PATIENTS.length],
+          id: user.id,
+          name: user.fullName || DIETITIAN_PATIENTS[index % DIETITIAN_PATIENTS.length].name,
+        }));
+
+      setDietitianName(dietitian?.fullName || 'Dr. Ambe Florence');
+      setPatients(storedPatients.length ? storedPatients : DIETITIAN_PATIENTS);
+    });
   }, []);
 
-  const pending = patients.filter(p => p.status === 'Needs Plan').length;
-
   return (
-    <div className="space-y-7">
-      {/* Header */}
-      <div>
-        <span className="badge-clinical mb-2 inline-block">Dietitian Portal</span>
-        <h1 className="text-2xl font-bold text-surface-900">Clinical Overview</h1>
-        <p className="text-sm text-surface-500 mt-1">
-          Current status of patient dietary interventions.
-        </p>
-      </div>
+    <div className="mx-auto max-w-5xl space-y-6 pb-4">
+      <header className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-600 text-sm font-black text-white shadow-sm shadow-primary-200">
+            CC
+          </div>
+          <div>
+            <p className="text-sm font-black leading-none text-surface-900">CareCuisin</p>
+            <p className="mt-1 text-xs font-semibold text-primary-600">Clinical nutrition workspace</p>
+          </div>
+        </div>
+        <Link
+          href="/dietitian/notifications"
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-surface-100 bg-white text-surface-500 shadow-sm transition-colors hover:text-primary-600"
+          aria-label="Open notifications"
+        >
+          <Bell size={19} />
+        </Link>
+      </header>
 
-      {/* Stat cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="card-medical !p-4">
-          <Users size={20} className="text-blue-600 mb-2" />
-          <p className="text-xs text-surface-500 uppercase tracking-widest">Active Patients</p>
-          <p className="text-2xl font-bold text-surface-900">{patients.length}</p>
-        </div>
-        <div className="card-medical !p-4">
-          <ClipboardCheck size={20} className="text-primary-600 mb-2" />
-          <p className="text-xs text-surface-500 uppercase tracking-widest">Plans Pending</p>
-          <p className="text-2xl font-bold text-surface-900">{pending}</p>
-        </div>
-        <div className="card-medical !p-4">
-          <Activity size={20} className="text-emerald-600 mb-2" />
-          <p className="text-xs text-surface-500 uppercase tracking-widest">System Health</p>
-          <p className="text-2xl font-bold text-surface-900">98%</p>
-        </div>
-      </div>
+      <section>
+        <p className="text-2xl font-black tracking-tight text-surface-900">Good morning, {dietitianName}</p>
+        <p className="mt-1 text-sm text-surface-500">You have {patients.filter(patient => patient.status !== 'Completed').length} active patients.</p>
+      </section>
 
-      {/* Patient Pipeline table */}
-      <div className="card-medical overflow-hidden !p-0">
-        <div className="bg-surface-50 border-b border-surface-100 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-surface-800">Patient Pipeline</h2>
-          <Link
-            href="/dietitian/create-plan"
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1"
-          >
-            <PlusCircle size={14} /> New Plan
-          </Link>
+      <section className="card-medical rounded-2xl border-primary-100 bg-primary-50 p-5">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-base font-black text-surface-900">Today&apos;s Schedule</h1>
+            <p className="mt-1 text-xs text-primary-700">Your clinical workload at a glance.</p>
+          </div>
+          <span className="rounded-full border border-primary-100 bg-white px-3 py-1 text-xs font-black text-primary-700">
+            Today
+          </span>
         </div>
-        <table className="w-full text-left">
-          <thead className="bg-surface-50 border-b border-surface-100">
-            <tr className="text-xs font-semibold text-surface-500 uppercase tracking-wider">
-              <th className="px-6 py-4">Patient</th>
-              <th className="px-6 py-4">Condition</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-50">
-            {patients.map(p => (
-              <tr key={p.id} className="hover:bg-surface-50/50 transition-colors">
-                <td className="px-6 py-4 font-semibold text-surface-900">{p.name}</td>
-                <td className="px-6 py-4 text-sm text-surface-600">{p.condition}</td>
-                <td className="px-6 py-4">
-                  <span className="badge-clinical">{p.status}</span>
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <Link
-                    href="/dietitian/create-plan"
-                    className="text-primary-600 hover:text-primary-700 text-sm font-semibold inline-flex items-center gap-1"
-                  >
-                    Create Plan <ArrowRight size={14} />
-                  </Link>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+
+        <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {DIETITIAN_STATS.map((item, index) => {
+            const icons = [Users, ClipboardList, CalendarClock, Send];
+            const Icon = icons[index];
+            return (
+              <div key={item.label} className={`rounded-2xl border bg-white p-4 ${metricTone(item.tone)}`}>
+                <Icon size={18} />
+                <p className="mt-3 text-2xl font-black">{item.value}</p>
+                <p className="mt-1 text-xs font-bold text-surface-500">{item.label}</p>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="card-medical rounded-2xl border-surface-100 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-black text-surface-900">Upcoming Consultations</h2>
+          <Link href="/dietitian/availability" className="text-xs font-bold text-primary-600">View All</Link>
+        </div>
+        <div className="space-y-3">
+          {CONSULTATIONS.map(item => (
+            <div key={`${item.time}-${item.patient}`} className="flex items-center gap-3 rounded-2xl border border-surface-100 bg-surface-50 p-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                <CalendarClock size={20} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-surface-900">{item.patient}</p>
+                <p className="mt-1 text-xs text-surface-500">{item.time} - {item.type}</p>
+              </div>
+              <Link
+                href="/dietitian/messages"
+                className="inline-flex items-center gap-1 rounded-full border border-primary-100 bg-white px-3 py-1 text-xs font-black text-primary-700"
+              >
+                {item.action === 'Video' ? <Video size={13} /> : <MessageSquare size={13} />}
+                {item.action}
+              </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-black text-surface-900">Recent Patients</h2>
+          <Link href="/dietitian/patients" className="text-xs font-bold text-primary-600">View All</Link>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {patients.slice(0, 4).map(patient => (
+            <Link
+              key={patient.id}
+              href={`/dietitian/patient-overview?patient=${encodeURIComponent(patient.id)}`}
+              className="block rounded-2xl border border-surface-100 bg-white p-4 shadow-sm transition-all hover:border-primary-100 hover:bg-primary-50/50 hover:shadow-md"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-primary-50 text-sm font-black text-primary-700">
+                  {initials(patient.name)}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-black text-surface-900">{patient.name}</p>
+                  <p className="mt-1 truncate text-xs text-surface-500">{patient.condition}</p>
+                  <span className={`mt-2 inline-flex rounded-full border px-2 py-1 text-[10px] font-black ${statusTone(patient.status)}`}>
+                    {patient.status}
+                  </span>
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <section className="card-medical rounded-2xl border-surface-100 p-5">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-black text-surface-900">My Tasks</h2>
+          <Link href="/dietitian/plans" className="text-xs font-bold text-primary-600">View All</Link>
+        </div>
+        <div className="space-y-3">
+          {DASHBOARD_TASKS.map(task => (
+            <div key={task.label} className="flex items-center gap-3 rounded-2xl border border-surface-100 bg-surface-50 p-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                <CheckSquare size={18} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-black text-surface-900">{task.label}</p>
+                <p className="mt-1 text-xs text-surface-500">{task.detail}</p>
+              </div>
+              <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-xs font-black text-surface-500">
+                {task.count}
+              </span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-primary-100 bg-primary-50 p-4">
+        <div className="flex items-start gap-3">
+          <Stethoscope size={18} className="mt-0.5 shrink-0 text-primary-600" />
+          <p className="text-xs leading-relaxed text-primary-700">
+            You are the clinical decision-maker. Patients see safe public guidance while chefs receive preparation-safe instructions only.
+          </p>
+        </div>
+      </section>
     </div>
   );
 }

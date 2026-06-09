@@ -1,1 +1,1 @@
-export async function GET(request) { return new Response('OK', { status: 200 }); }
+export { GET, PATCH } from '../notifications/route';

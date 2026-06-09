@@ -57,6 +57,7 @@ export default function ChefStep3() {
 
   // ---------- restore saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('cc_onboarding_chef_step3') || '{}');
       if (saved.weeklyCapacity) setWeeklyCapacity(saved.weeklyCapacity);
@@ -72,6 +73,7 @@ export default function ChefStep3() {
       if (saved.dataPrivacyConsent) setDataPrivacyConsent(saved.dataPrivacyConsent);
       if (saved.medicalDisclaimer) setMedicalDisclaimer(saved.medicalDisclaimer);
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

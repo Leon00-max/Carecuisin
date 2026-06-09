@@ -11,15 +11,14 @@ import {
   ChefHat,
   AlertTriangle,
   BarChart3,
+  Activity,
+  Settings,
   LogOut,
   ChevronLeft,
   ChevronRight,
-  Bell,
+  X,
 } from 'lucide-react';
 
-/* ─────────────────────────────────────────────────────────────
-   Helper – read live pending counts from localStorage
-───────────────────────────────────────────────────────────── */
 function getLiveCounts() {
   if (typeof window === 'undefined') return { pendingVerifications: 0, openComplaints: 0 };
 
@@ -35,34 +34,25 @@ function getLiveCounts() {
 
     pendingDietitians -= approved.concat(rejected).filter(u => u.role === 'dietitian').length;
     pendingChefs -= approved.concat(rejected).filter(u => u.role === 'chef').length;
-
-    // Ensure non‑negative
-    pendingDietitians = Math.max(pendingDietitians, 0);
-    pendingChefs = Math.max(pendingChefs, 0);
   } catch (_) {}
 
-  // For complaints, we can read from localStorage if we had a complaints table, but for now use 0
-  const openComplaints = 0; // placeholder
-
   return {
-    pendingVerifications: pendingDietitians + pendingChefs,
-    openComplaints,
+    pendingVerifications: Math.max(pendingDietitians, 0) + Math.max(pendingChefs, 0),
+    openComplaints: 1,
   };
 }
 
-/* ─────────────────────────────────────────────────────────────
-   NAV STRUCTURE – static, numbers injected from state
-───────────────────────────────────────────────────────────── */
 const NAV_GROUPS = [
   {
     title: 'Command Center',
     items: [
       { href: '/admin/dashboard', label: 'Dashboard', icon: LayoutDashboard, badgeKey: null },
       { href: '/admin/verify-users', label: 'Verification Vault', icon: ShieldCheck, badgeKey: 'pendingVerifications' },
+      { href: '/admin/operations', label: 'Operations Center', icon: Activity, badgeKey: null },
     ],
   },
   {
-    title: 'Ecosystem',
+    title: 'Ecosystem Directory',
     items: [
       { href: '/admin/users?role=patients', label: 'Patients', icon: Users, badgeKey: null },
       { href: '/admin/users?role=dietitians', label: 'Dietitians', icon: Stethoscope, badgeKey: null },
@@ -72,63 +62,91 @@ const NAV_GROUPS = [
   {
     title: 'Platform Health',
     items: [
-      { href: '/admin/complaints', label: 'Safety & Complaints', icon: AlertTriangle, badgeKey: 'openComplaints' },
-      { href: '/admin/systemst-status', label: 'Analytics', icon: BarChart3, badgeKey: null },
+      { href: '/admin/complaints', label: 'Complaints & Safety', icon: AlertTriangle, badgeKey: 'openComplaints' },
+      { href: '/admin/systemst-status', label: 'Telemetry Charts', icon: BarChart3, badgeKey: null },
+      { href: '/admin/settings', label: 'Control Console', icon: Settings, badgeKey: null },
     ],
   },
 ];
 
-/* ─────────────────────────────────────────────────────────────
-   COMPONENT
-───────────────────────────────────────────────────────────── */
-export default function Sidebar() {
+export default function Sidebar({ mobileOpen, setMobileOpen }) {
   const pathname = usePathname();
   const router = useRouter();
   const [collapsed, setCollapsed] = useState(false);
   const [liveCounts, setLiveCounts] = useState({ pendingVerifications: 0, openComplaints: 0 });
 
-  // Refresh counts on mount and whenever localStorage might change
   useEffect(() => {
-    setLiveCounts(getLiveCounts());
+    queueMicrotask(() => {
+      setLiveCounts(getLiveCounts());
+    });
+
+    const handler = e => {
+      if (e.key === 'cc_users' || e.key === 'cc_approved_users' || e.key === 'cc_rejected_users') {
+        setLiveCounts(getLiveCounts());
+      }
+    };
+    window.addEventListener('storage', handler);
+    return () => window.removeEventListener('storage', handler);
   }, []);
 
-  function handleLogout() {
-    localStorage.clear();
-    router.push('/login');
-  }
+  const handleLogout = () => {
+    localStorage.removeItem('cc_current_user');
+    router.push('/auth/login');
+  };
+
+  const showFullText = !collapsed || mobileOpen;
 
   return (
     <aside
-      className={`relative bg-white border-r border-surface-100 flex flex-col h-screen sticky top-0 transition-all duration-300 ${
-        collapsed ? 'w-20' : 'w-64'
-      }`}
+      className={`bg-white border-r border-surface-200 flex flex-col transition-all duration-300 z-50 text-surface-700 shadow-sm
+        fixed inset-y-0 left-0 w-64 transform ${mobileOpen ? 'translate-x-0' : '-translate-x-full'}
+        lg:translate-x-0 lg:relative lg:flex h-screen sticky top-0 shrink-0
+        ${collapsed ? 'lg:w-20' : 'lg:w-64'}
+      `}
     >
-      {/* Logo + collapse toggle */}
-      <div className="flex items-center justify-between px-4 h-16 border-b border-surface-100 shrink-0">
-        <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-          <span className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center text-white font-bold text-xs">CC</span>
-          {!collapsed && (
+      <div className="flex items-center justify-between px-4 h-16 border-b border-surface-200 shrink-0">
+        <Link
+          href="/admin/dashboard"
+          className="flex items-center gap-2.5 min-w-0"
+          onClick={() => setMobileOpen && setMobileOpen(false)}
+        >
+          <span className="w-8 h-8 bg-primary-600 rounded-lg flex items-center justify-center text-white font-black text-xs shrink-0 shadow-sm shadow-primary-200">
+            CC
+          </span>
+          {showFullText && (
             <div className="min-w-0">
-              <p className="text-sm font-bold text-surface-900 leading-none">CareCuisin</p>
-              <p className="text-xs text-surface-400 mt-0.5">Admin Console</p>
+              <p className="text-xs font-black tracking-widest text-surface-900 uppercase leading-none">CareCuisin</p>
+              <p className="text-[9px] font-bold text-primary-600 tracking-wider uppercase mt-1">Admin Operations</p>
             </div>
           )}
         </Link>
-        <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="w-6 h-6 rounded-md flex items-center justify-center text-surface-400 hover:text-primary-600 hover:bg-primary-50 transition-colors shrink-0"
-          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
-        </button>
+
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => setMobileOpen && setMobileOpen(false)}
+            className="lg:hidden w-7 h-7 rounded-lg flex items-center justify-center text-surface-400 hover:text-primary-600 hover:bg-primary-50 transition-all shrink-0"
+            title="Close sidebar"
+          >
+            <X size={15} />
+          </button>
+
+          <button
+            onClick={() => setCollapsed(!collapsed)}
+            className="hidden lg:flex w-7 h-7 rounded-lg items-center justify-center text-surface-400 hover:text-primary-600 hover:bg-primary-50 transition-all shrink-0"
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {collapsed ? <ChevronRight size={14} /> : <ChevronLeft size={14} />}
+          </button>
+        </div>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6 select-none">
         {NAV_GROUPS.map(group => (
-          <div key={group.title}>
-            {!collapsed && (
-              <p className="text-xs font-semibold text-surface-400 uppercase tracking-widest mb-2 px-2">{group.title}</p>
+          <div key={group.title} className="space-y-1.5">
+            {showFullText && (
+              <p className="text-[9px] font-black text-surface-400 uppercase tracking-widest px-3 mb-1">
+                {group.title}
+              </p>
             )}
             <div className="space-y-0.5">
               {group.items.map(item => {
@@ -141,26 +159,33 @@ export default function Sidebar() {
                   <Link
                     key={item.href}
                     href={item.href}
+                    onClick={() => setMobileOpen && setMobileOpen(false)}
                     title={collapsed ? item.label : undefined}
-                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all group relative ${
-                      isActive ? 'bg-primary-50 text-primary-700' : 'text-surface-600 hover:bg-surface-50 hover:text-surface-900'
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all relative border ${
+                      isActive
+                        ? 'bg-primary-50 text-primary-700 border-primary-100 shadow-sm'
+                        : 'text-surface-500 border-transparent hover:bg-surface-50 hover:text-surface-900'
                     }`}
                   >
-                    <Icon size={18} strokeWidth={isActive ? 2.5 : 2} className={`shrink-0 ${isActive ? 'text-primary-600' : 'text-surface-400 group-hover:text-surface-600'}`} />
-                    {!collapsed && (
+                    <Icon size={16} className={`shrink-0 ${isActive ? 'text-primary-600' : 'text-surface-400'}`} />
+
+                    {showFullText && (
                       <>
                         <span className="flex-1 truncate">{item.label}</span>
                         {badgeCount !== null && badgeCount > 0 && (
-                          <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                            item.badgeKey === 'pendingVerifications' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-600'
+                          <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
+                            item.badgeKey === 'pendingVerifications'
+                              ? 'bg-warning/10 text-amber-700 border-amber-200'
+                              : 'bg-red-50 text-alert border-red-100'
                           }`}>
                             {badgeCount}
                           </span>
                         )}
                       </>
                     )}
-                    {collapsed && badgeCount !== null && badgeCount > 0 && (
-                      <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />
+
+                    {!showFullText && badgeCount !== null && badgeCount > 0 && (
+                      <span className="absolute top-2 right-2 w-1.5 h-1.5 rounded-full bg-alert animate-pulse" />
                     )}
                   </Link>
                 );
@@ -170,34 +195,32 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer: notifications, logout, profile */}
-      <div className="px-3 pb-4 pt-3 border-t border-surface-100 space-y-1 shrink-0">
-        <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50 hover:text-surface-900 transition-colors relative" title="Notifications">
-          <Bell size={18} className="shrink-0 text-surface-400" />
-          {!collapsed && <span className="flex-1 text-left">Notifications</span>}
-          {/* notification badge – keep static for now, later can be dynamic */}
-          {!collapsed && <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-600">4</span>}
-          {collapsed && <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-red-500" />}
+      <div className="px-3 pb-4 pt-3 border-t border-surface-200 space-y-1.5 shrink-0">
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-bold uppercase tracking-wider text-surface-500 hover:bg-red-50 hover:text-alert transition-colors group"
+          title="Logout"
+        >
+          <LogOut size={16} className="shrink-0 text-surface-400 group-hover:text-alert" />
+          {showFullText && <span>Sign Out</span>}
         </button>
 
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-red-50 hover:text-red-600 transition-colors group" title="Logout">
-          <LogOut size={18} className="shrink-0 text-surface-400 group-hover:text-red-500" />
-          {!collapsed && <span>Log out</span>}
-        </button>
-
-        {!collapsed && (
-          <div className="flex items-center gap-3 px-3 py-3 mt-1 bg-surface-50 rounded-xl">
-            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">AD</div>
-            <div className="flex-1 min-w-0">
-              <p className="text-xs font-semibold text-surface-800 truncate">Super Admin</p>
-              <p className="text-xs text-surface-400 truncate">Buea HQ</p>
+        {showFullText ? (
+          <div className="flex items-center gap-3 px-3 py-3 mt-2 bg-surface-50 border border-surface-200 rounded-xl">
+            <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center font-black text-xs shrink-0 border border-primary-100 shadow-sm">
+              AD
             </div>
-            <span className="w-2 h-2 rounded-full bg-green-400 shrink-0" title="Online" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-extrabold text-surface-900 truncate">Super Admin</p>
+              <p className="text-[10px] text-surface-500 truncate mt-0.5">Buea Command</p>
+            </div>
+            <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse shrink-0" title="System Online" />
           </div>
-        )}
-        {collapsed && (
+        ) : (
           <div className="flex justify-center py-2">
-            <div className="w-8 h-8 rounded-lg bg-primary-100 text-primary-700 flex items-center justify-center font-bold text-xs">AD</div>
+            <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary-700 flex items-center justify-center font-black text-xs border border-primary-100 shadow-sm">
+              AD
+            </div>
           </div>
         )}
       </div>

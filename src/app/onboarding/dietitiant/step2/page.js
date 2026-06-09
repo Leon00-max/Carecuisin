@@ -82,6 +82,7 @@ export default function DietitianStep2() {
 
   // ---------- restore saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('cc_onboarding_dietitian_step2') || '{}');
       if (saved.specialties) setSpecialties(saved.specialties);
@@ -95,6 +96,7 @@ export default function DietitianStep2() {
       if (saved.employmentStatus) setEmploymentStatus(saved.employmentStatus);
       if (saved.supervisorContact) setSupervisorContact(saved.supervisorContact);
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

@@ -44,7 +44,9 @@ export default function NotFound() {
 
   useEffect(() => {
     setTimeout(() => setVis(true), 80);
-    setRoleLink(getQuickLinks());
+    queueMicrotask(() => {
+      setRoleLink(getQuickLinks());
+    });
 
     /* Auto-redirect countdown */
     const t = setInterval(() => {
@@ -110,10 +112,10 @@ export default function NotFound() {
           {/* Message */}
           <div className="mb-8">
             <h1 className="text-2xl sm:text-3xl font-black text-white mb-3 leading-tight">
-              This page doesn't exist.
+              This page does not exist.
             </h1>
             <p className="text-blue-200 text-base leading-relaxed">
-              The URL you visited isn't part of CareCuisin —
+              The URL you visited is not part of CareCuisin -
               it may have been mistyped, moved, or never existed.
             </p>
           </div>

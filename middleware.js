@@ -12,7 +12,12 @@
 import { NextResponse } from 'next/server';
 
 /* ── Routes that never need auth ── */
-const PUBLIC_PATHS = new Set(['/', '/login', '/signup']);
+const PUBLIC_PATHS = new Set([
+  '/',
+  '/auth/login',
+  '/auth/signup',
+  '/auth/forgot-password',
+]);
 
 /* ── Prefix helpers ── */
 const is = prefix => path => path.startsWith(prefix);
@@ -37,9 +42,10 @@ export function middleware(request) {
   const status = request.cookies.get('cc_status')?.value;
 
   /* 2. Public pages — always accessible */
-  if (isPublic(pathname)) {
+  const isCurrentlyPublic = PUBLIC_PATHS.has(pathname) || pathname.startsWith('/verify/');
+  if (isCurrentlyPublic) {
     // If already logged in and visiting login/signup, redirect to dashboard
-    if (userId && (pathname === '/login' || pathname === '/signup')) {
+    if (userId && (pathname === '/auth/login' || pathname === '/auth/signup')) {
       return NextResponse.redirect(
         new URL(dashboardFor(role, status), request.url)
       );
@@ -49,7 +55,7 @@ export function middleware(request) {
 
   /* 3. No session → login */
   if (!userId) {
-    const loginUrl = new URL('/login', request.url);
+    const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('from', pathname);
     return NextResponse.redirect(loginUrl);
   }
@@ -101,7 +107,7 @@ function deny(request) {
 }
 
 function dashboardFor(role, status) {
-  if (!role) return '/login';
+  if (!role) return '/auth/login';
   if ((role === 'dietitian' || role === 'chef') && status !== 'approved') {
     return status === 'rejected'
       ? '/onboarding/rejected'
@@ -113,7 +119,7 @@ function dashboardFor(role, status) {
     chef:      '/chef/dashboard',
     admin:     '/admin/dashboard',
   };
-  return map[role] || '/login';
+  return map[role] || '/auth/login';
 }
 
 export const config = {

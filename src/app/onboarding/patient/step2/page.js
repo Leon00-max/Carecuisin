@@ -73,6 +73,7 @@ export default function PatientStep2() {
 
   // ---------- pre‑fill from saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = localStorage.getItem('cc_onboarding_patient_step2');
       if (saved) {
@@ -94,6 +95,7 @@ export default function PatientStep2() {
         if (parsed.foodDiary) setFoodDiary(parsed.foodDiary);
       }
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

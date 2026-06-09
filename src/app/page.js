@@ -81,7 +81,7 @@ export default function HomePage(){
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-blue-400/30 bg-blue-500/10 backdrop-blur-sm mb-8"
                 style={{animation:vis?'fadeIn 0.6s ease-out forwards':'none',opacity:0}}>
                 <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"/>
-                <span className="text-blue-200 text-xs font-semibold uppercase tracking-widest">Buea's First Clinical Meal Platform</span>
+                <span className="text-blue-200 text-xs font-semibold uppercase tracking-widest">Buea First Clinical Meal Platform</span>
               </div>
 
               <h1 className="text-5xl sm:text-6xl lg:text-7xl font-black text-white leading-none tracking-tight mb-6"
@@ -94,7 +94,7 @@ export default function HomePage(){
               <p className="text-blue-200 text-lg leading-relaxed max-w-lg mb-10"
                 style={{animation:vis?'fadeUp 0.7s 0.4s ease-out both':'none',opacity:0}}>
                 Dietitian prescribed meal plans, prepared by admin verified chefs in Buea.
-                Because your diet shouldn't be a guess  it should be a prescription.
+                Because your diet should not be a guess. It should be a prescription.
               </p>
 
               <div className="flex flex-wrap gap-4 mb-12" style={{animation:vis?'fadeUp 0.7s 0.6s ease-out both':'none',opacity:0}}>
@@ -108,10 +108,10 @@ export default function HomePage(){
               </div>
 
               <div className="flex flex-wrap gap-3" style={{animation:vis?'fadeUp 0.7s 0.8s ease-out both':'none',opacity:0}}>
-                {[[<span className="text-emerald-400"><Clock /></span>,'Clinical Data Protected'],[
-                  <span className="text-emerald-400"><Verified /></span>,'Admin-Verified Pros'],
-                  [<span className="text-emerald-400"><Locate /></span>,'Built for Buea'],
-                  [<span className="text-emerald-400"><HospitalIcon /></span>,'Hospital-Grade']].map(([icon,label])=>(
+                {[[<span key="clock" className="text-emerald-400"><Clock /></span>,'Clinical Data Protected'],[
+                  <span key="verified" className="text-emerald-400"><Verified /></span>,'Admin-Verified Pros'],
+                  [<span key="locate" className="text-emerald-400"><Locate /></span>,'Built for Buea'],
+                  [<span key="hospital" className="text-emerald-400"><HospitalIcon /></span>,'Hospital-Grade']].map(([icon,label])=>(
                   <div key={label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
                     <span className="text-sm">{icon}</span>
                     <span className="text-blue-200 text-xs font-medium">{label}</span>
@@ -141,7 +141,7 @@ export default function HomePage(){
                     ))}
                   </div>
                   <div className="bg-primary-500/30 rounded-xl p-3 border border-primary-400/30">
-                    <p className="text-blue-200 text-xs font-semibold">Today's Lunch</p>
+                    <p className="text-blue-200 text-xs font-semibold">Today&apos;s Lunch</p>
                     <p className="text-white/60 text-xs mt-0.5">Grilled fish · Plantains · Vegetables</p>
                   </div>
                 </div>
@@ -309,7 +309,7 @@ export default function HomePage(){
                 <div className="p-5 bg-white">
                   <h3 className="text-sm font-bold text-surface-900 mb-0.5">{name}</h3>
                   <p className="text-xs font-semibold text-primary-600 mb-3">{role}</p>
-                  <p className="text-xs text-surface-500 leading-relaxed italic">"{quote}"</p>
+                  <p className="text-xs text-surface-500 leading-relaxed italic">&quot;{quote}&quot;</p>
                 </div>
               </div>
             ))}
@@ -321,7 +321,7 @@ export default function HomePage(){
             <div className="h-64 sm:h-72 bg-gradient-to-br from-surface-100 to-surface-200 flex flex-col items-center justify-center gap-3">
               <div className="text-4xl">📸</div>
               <p className="text-surface-400 font-semibold text-sm">REPLACE: Group photo here</p>
-              <p className="text-surface-300 text-xs">All 6 members · "CareCuisin" sign · Buea campus</p>
+              <p className="text-surface-300 text-xs">All 6 members · &quot;CareCuisin&quot; sign · Buea campus</p>
             </div>
             <div className="absolute inset-0 flex items-end p-6 pointer-events-none">
               <div className="bg-white/90 backdrop-blur-sm rounded-xl px-5 py-3 border border-surface-100 shadow-sm">
@@ -340,7 +340,7 @@ export default function HomePage(){
                   <div className="w-10 h-10 rounded-xl bg-primary-100 text-primary-700 flex items-center justify-center text-xs font-bold">{name.split(' ').map(n=>n[0]).join('').slice(0,2)}</div>
                   <div><p className="text-sm font-semibold text-surface-800">{name}</p><p className="text-xs text-primary-600 font-medium">{role}</p></div>
                 </div>
-                <p className="text-sm text-surface-600 leading-relaxed italic">"{text}"</p>
+                <p className="text-sm text-surface-600 leading-relaxed italic">&quot;{text}&quot;</p>
                 <div className="mt-3 flex gap-0.5">{[...Array(5)].map((_,i)=><span key={i} className="text-amber-400 text-sm">★</span>)}</div>
               </div>
             ))}
@@ -352,7 +352,7 @@ export default function HomePage(){
       <section id="contact" className="relative py-24 sm:py-32 overflow-hidden" style={{background:'linear-gradient(135deg,#0f172a 0%,#1e3a8a 50%,#1e40af 100%)'}}>
             <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover z-0"
               style={{ opacity: 0.3 }} >
-             <source src="videos/IMG_1468.MOV" type="video/mp4" />
+             <source src="videos/IMG_1468.MOV" type="video/MOV" />
            </video>
         <div className="absolute inset-0 opacity-5" style={{backgroundImage:'linear-gradient(white 1px,transparent 1px),linear-gradient(90deg,white 1px,transparent 1px)',backgroundSize:'40px 40px'}}/>
         <div className="absolute top-0 right-0 w-96 h-96 rounded-full opacity-10 blur-3xl" style={{background:'#2563eb'}}/>
@@ -362,7 +362,7 @@ export default function HomePage(){
             Take control of<br/>
             <span className="bg-clip-text text-transparent" style={{backgroundImage:'linear-gradient(90deg,#60a5fa,#34d399)'}}>your health today.</span>
           </h2>
-          <p className="text-blue-200 text-lg max-w-xl mx-auto mb-10 leading-relaxed">Join CareCuisin  it's free to start. Patients get immediate access. Professionals reviewed within 48 hours.</p>
+          <p className="text-blue-200 text-lg max-w-xl mx-auto mb-10 leading-relaxed">Join CareCuisin. It is free to start. Patients get immediate access. Professionals reviewed within 48 hours.</p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-10">
             <Link href="auth/signup" className="px-10 py-4 rounded-2xl bg-primary-500 text-white font-bold text-base hover:bg-primary-400 transition-all shadow-2xl shadow-blue-900/60 w-full sm:w-auto">Create your account →</Link>
             <Link href="auth/login" className="px-10 py-4 rounded-2xl border border-blue-400/40 text-white font-bold text-base hover:bg-white/10 transition-colors w-full sm:w-auto">Sign in</Link>

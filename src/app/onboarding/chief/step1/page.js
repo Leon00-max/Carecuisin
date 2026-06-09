@@ -101,6 +101,7 @@ export default function ChefStep1() {
 
   // ---------- restore saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('cc_onboarding_chef_step1') || '{}');
       if (saved.fullName) setFullName(saved.fullName);
@@ -122,6 +123,7 @@ export default function ChefStep1() {
       if (saved.foodHandlingPractices) setFoodHandlingPractices(saved.foodHandlingPractices);
       // file names only stored, not the actual files
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

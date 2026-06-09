@@ -1,226 +1,270 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Save, Eye, EyeOff, ArrowLeft, UserCheck, Calendar, Coffee, Sun, Moon, Apple } from 'lucide-react';
+import {
+  ArrowLeft,
+  Flame,
+  Plus,
+  Save,
+  Send,
+  ShieldCheck,
+  Trash2,
+  UtensilsCrossed,
+} from 'lucide-react';
 import { saveMealPlan } from '@/lib/mealPlanStore';
-import { getCurrentUserId, getUserById } from '@/lib/userStore';
+import { getCurrentUserId } from '@/lib/userStore';
+import {
+  CLINICAL_PRIVATE_NOTE,
+  DIETITIAN_MEALS,
+  DIETITIAN_PATIENTS,
+  MEAL_PLAN_DAYS,
+} from '@/lib/dietitianPortalData';
 
-function getPatientsWithConditions() {
-  const allUsers = getUsers();
-  return allUsers
-    .filter(u => u.role === 'patient')
-    .map(u => {
-      let condition = 'Unknown';
-      try {
-        // Read the patient's Step 2 onboarding data (contains medical conditions)
-        const step2 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step2') || '{}');
-        // Use the first condition if available
-        condition = step2.conditions?.[0] || 'General';
-      } catch (_) {}
-      return {
-        id: u.id,
-        name: u.fullName || 'Patient',
-        condition,
-      };
-    });
-}
+const STEPS = ['Meals', 'Nutrients', 'Notes'];
 
-const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-const MEAL_ICONS = { breakfast: Coffee, lunch: Sun, dinner: Moon, snacks: Apple };
-
-export default function CreatePlanPage() {
+export default function CreateMealPlanPage() {
   const router = useRouter();
-  const [patients, setPatients] = useState([]);
-  const [selectedPatient, setSelectedPatient] = useState('');
-  const [showPrivate, setShowPrivate] = useState(false);
+  const [step, setStep] = useState(0);
+  const [day, setDay] = useState('Monday');
+  const [patientId, setPatientId] = useState(DIETITIAN_PATIENTS[0].id);
+  const [meals, setMeals] = useState(DIETITIAN_MEALS);
+  const [patientNote, setPatientNote] = useState('This meal supports blood sugar stability and keeps you full longer.');
+  const [clinicalNote, setClinicalNote] = useState(CLINICAL_PRIVATE_NOTE);
+  const patient = DIETITIAN_PATIENTS.find(item => item.id === patientId) || DIETITIAN_PATIENTS[0];
 
-  useEffect(() => {
-    
-    const data = getPatientsWithConditions();
-    setPatients(data);
-    if (data.length > 0) setSelectedPatient(data[0].id);
+  const totals = useMemo(() => {
+    const calories = meals.reduce((sum, meal) => sum + Number(meal.calories || 0), 0);
+    return {
+      calories,
+      carbs: 174,
+      protein: 92,
+      fat: 47,
+      fiber: 29,
+      water: '8 glasses',
+      sodium: 'Reduced',
+    };
+  }, [meals]);
 
-  }, []);
-
-  const [meals, setMeals] = useState(
-    DAYS.map(() => ({
-      breakfast: { public: '', clinical: '' },
-      lunch:     { public: '', clinical: '' },
-      dinner:    { public: '', clinical: '' },
-      snacks:    { public: '', clinical: '' },
-    }))
-  );
-
-  const updateMeal = (dayIdx, mealType, field, value) => {
-    setMeals(prev => {
-      const copy = [...prev];
-      copy[dayIdx] = { ...copy[dayIdx], [mealType]: { ...copy[dayIdx][mealType], [field]: value } };
-      return copy;
-    });
+  const addMeal = () => {
+    setMeals(prev => [
+      ...prev,
+      {
+        type: 'Snack',
+        name: 'New clinical snack',
+        calories: 160,
+        carbs: '18g',
+        protein: '8g',
+        fat: '4g',
+        fiber: '5g',
+        sodium: 'Low',
+        guidance: 'Add preparation guidance for chef.',
+      },
+    ]);
   };
 
-  const handleSubmit = (e) => {
-  e.preventDefault();
+  const removeMeal = (index) => {
+    setMeals(prev => prev.filter((_, itemIndex) => itemIndex !== index));
+  };
 
-  // Build the meals object in the format the store expects
-  const mealsByDay = {};
-  DAYS.forEach((day, idx) => {
-    mealsByDay[day] = meals[idx];
-  });
-
-  const patientId = selectedPatient; // currently holds the patient ID from the dropdown
-  const dietitianId = getCurrentUserId(); // from lib/userStore
-
-  const { plan, clinicalNote } = saveMealPlan({
-    patientId,
-    dietitianId,
-    startDate: new Date().toISOString(),
-    meals: mealsByDay,
-  });
-
-  console.log('Plan saved:', plan);
-  console.log('Clinical notes saved:', clinicalNote);
-
-  router.push('/dietitian/dashboard');
-};
+  const publishPlan = (status = 'active') => {
+    const dietitianId = getCurrentUserId() || 'DIETITIAN-DEMO';
+    saveMealPlan({
+      patientId: patient.id,
+      dietitianId,
+      title: `${patient.condition} Plan - Week 3`,
+      description: patientNote,
+      startDate: '2026-05-25',
+      endDate: '2026-05-31',
+      status,
+      details: MEAL_PLAN_DAYS.map(planDay => ({
+        day: planDay,
+        items: meals.map(meal => ({
+          type: meal.type,
+          description: meal.name,
+          time: meal.type === 'Breakfast' ? '7:00 AM' : meal.type === 'Lunch' ? '12:30 PM' : meal.type === 'Dinner' ? '7:00 PM' : '4:00 PM',
+          kcal: meal.calories,
+          publicNote: patientNote,
+          preparationGuidance: meal.guidance,
+        })),
+      })),
+      _clinical: {
+        medicalRationale: clinicalNote,
+        clinicalTargets: totals,
+        allergyFlags: [],
+      },
+    });
+    router.push('/dietitian/plans');
+  };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <span className="badge-clinical mb-2 inline-block">Prescription Engine</span>
-          <h1 className="text-2xl font-bold text-surface-900">Create Meal Plan</h1>
-          <p className="text-sm text-surface-500 mt-1">
-            Build a weekly clinical‑culinary plan for your patient.
-          </p>
-        </div>
-        <button
-          onClick={() => router.back()}
-          className="flex items-center gap-1 text-sm text-surface-600 hover:text-primary-600"
+    <div className="mx-auto max-w-4xl space-y-6 pb-4">
+      <header className="flex items-center gap-3">
+        <Link
+          href="/dietitian/plans"
+          className="flex h-11 w-11 items-center justify-center rounded-2xl border border-surface-100 bg-white text-surface-500 shadow-sm"
+          aria-label="Back to plans"
         >
-          <ArrowLeft size={16} /> Back
-        </button>
-      </div>
-
-      {/* Patient selection + clinical mode toggle */}
-      <div className="card-medical space-y-4">
-        <div className="flex items-center gap-3">
-          <UserCheck size={20} className="text-primary-500" />
-          <h3 className="text-sm font-semibold text-surface-800">Subject Selection</h3>
+          <ArrowLeft size={19} />
+        </Link>
+        <div>
+          <h1 className="text-2xl font-black tracking-tight text-surface-900">Create Meal Plan</h1>
+          <p className="mt-1 text-sm text-surface-500">Guided clinical workflow for safe prescriptions.</p>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="patient" className="form-label">Target Patient</label>
-            <select
-              id="patient"
-              value={selectedPatient}
-              onChange={e => setSelectedPatient(e.target.value)}
-              className="input-medical mt-1"
+      </header>
+
+      <section className="card-medical rounded-2xl border-surface-100 p-4">
+        <div className="grid grid-cols-3 gap-2">
+          {STEPS.map((item, index) => (
+            <button
+              key={item}
+              type="button"
+              onClick={() => setStep(index)}
+              className={`rounded-2xl border px-3 py-3 text-xs font-black transition-colors ${
+                step === index
+                  ? 'border-primary-200 bg-primary-50 text-primary-700 shadow-sm shadow-primary-100'
+                  : 'border-surface-100 bg-white text-surface-500'
+              }`}
             >
-              {patients.map(p => (
-                <option key={p.id} value={p.id}>{p.name} — {p.condition}</option>
-              ))}
-            </select>
-          </div>
-          <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setShowPrivate(!showPrivate)}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                  showPrivate ? 'bg-primary-600 text-white' : 'bg-white text-primary-600 border border-primary-200'
-                }`}
-              >
-                {showPrivate ? <Eye size={18} /> : <EyeOff size={18} />}
-              </button>
-              <div>
-                <p className="text-sm font-semibold text-primary-700">Clinical Mode</p>
-                <p className="text-xs text-primary-500">
-                  {showPrivate ? 'Private notes enabled' : 'Private notes hidden'}
-                </p>
-              </div>
-            </div>
-          </div>
+              {index + 1}. {item}
+            </button>
+          ))}
         </div>
-      </div>
+      </section>
 
-      {/* Weekly plan form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {DAYS.map((day, dayIdx) => (
-          <div key={day} className="card-medical overflow-hidden !p-0">
-            {/* Day header — light primary blue */}
-            <div className="bg-primary-500 px-6 py-3 flex items-center justify-between">
-              <h3 className="text-white font-semibold flex items-center gap-2 text-sm">
-                <Calendar size={16} />
-                {day}
-              </h3>
-              <span className="text-xs text-primary-100">Day {dayIdx + 1}</span>
-            </div>
+      <section className="card-medical rounded-2xl border-surface-100 p-5">
+        <label className="form-label">Patient</label>
+        <select value={patientId} onChange={event => setPatientId(event.target.value)} className="input-medical rounded-2xl">
+          {DIETITIAN_PATIENTS.map(item => (
+            <option key={item.id} value={item.id}>{item.name} - {item.condition}</option>
+          ))}
+        </select>
+      </section>
 
-            <div className="p-6 space-y-5">
-              {Object.entries(MEAL_ICONS).map(([mealType, Icon]) => (
-                <div key={mealType} className="grid grid-cols-1 md:grid-cols-2 gap-4 border-b border-surface-50 pb-4 last:border-0 last:pb-0">
-                  {/* Public meal */}
-                  <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <Icon size={16} className="text-primary-500" />
-                      <label className="text-xs font-semibold text-surface-500 uppercase tracking-wider capitalize">
-                        {mealType}
-                      </label>
-                      <span className="text-xs text-surface-300">(Patient sees this)</span>
-                    </div>
-                    <input
-                      type="text"
-                      placeholder={`Prescribe ${mealType}…`}
-                      value={meals[dayIdx][mealType].public}
-                      onChange={e => updateMeal(dayIdx, mealType, 'public', e.target.value)}
-                      className="input-medical"
-                    />
-                  </div>
+      {step === 0 && (
+        <section className="space-y-4">
+          <div className="flex gap-2 overflow-x-auto pb-1">
+            {MEAL_PLAN_DAYS.map(item => {
+              const active = day === item;
+              return (
+                <button
+                  key={item}
+                  type="button"
+                  onClick={() => setDay(item)}
+                  className={`min-w-[112px] rounded-full border px-4 py-2 text-xs font-black ${
+                    active
+                      ? 'border-primary-200 bg-primary-50 text-primary-700'
+                      : 'border-surface-100 bg-white text-surface-500'
+                  }`}
+                >
+                  {item}
+                </button>
+              );
+            })}
+          </div>
 
-                  {/* Private clinical note */}
-                  {showPrivate && (
-                    <div>
-                      <div className="flex items-center gap-2 mb-2">
-                        <EyeOff size={16} className="text-primary-600" />
-                        <label className="text-xs font-semibold text-primary-600 uppercase tracking-wider capitalize">
-                          {mealType}
-                        </label>
-                        <span className="text-xs text-primary-400">(Dietitian & Admin only)</span>
-                      </div>
-                      <textarea
-                        rows={1}
-                        placeholder="Clinical targets, allergies, prep notes…"
-                        value={meals[dayIdx][mealType].clinical}
-                        onChange={e => updateMeal(dayIdx, mealType, 'clinical', e.target.value)}
-                        className="input-medical"
-                      />
-                    </div>
-                  )}
+          {meals.map((meal, index) => (
+            <article key={`${meal.type}-${index}`} className="card-medical rounded-2xl border-surface-100 p-4">
+              <div className="flex items-start gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary-50 text-primary-600">
+                  <UtensilsCrossed size={20} />
                 </div>
-              ))}
-            </div>
-          </div>
-        ))}
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <input value={meal.type} readOnly className="input-medical rounded-2xl" />
+                    <input value={`${meal.calories} kcal`} readOnly className="input-medical rounded-2xl" />
+                  </div>
+                  <input value={meal.name} readOnly className="input-medical rounded-2xl" />
+                  <p className="rounded-2xl border border-primary-100 bg-primary-50 p-3 text-xs leading-relaxed text-primary-700">
+                    {meal.guidance}
+                  </p>
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {[meal.carbs, meal.protein, meal.fat, meal.fiber, meal.sodium].map((value, valueIndex) => (
+                      <span key={`${value}-${valueIndex}`} className="rounded-xl bg-surface-50 px-3 py-2 text-center text-xs font-black text-surface-600">
+                        {value}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeMeal(index)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-alert/20 bg-alert/10 text-alert"
+                  aria-label="Remove meal"
+                >
+                  <Trash2 size={17} />
+                </button>
+              </div>
+            </article>
+          ))}
 
-        {/* Submit */}
-        <div className="card-medical flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div>
-            <h4 className="font-semibold text-surface-800">Finalize Plan</h4>
-            <p className="text-xs text-surface-400">Submit to system & notify patient</p>
+          <button type="button" onClick={addMeal} className="btn-outline flex w-full items-center justify-center gap-2 rounded-2xl bg-white">
+            <Plus size={17} />
+            Add Meal
+          </button>
+        </section>
+      )}
+
+      {step === 1 && (
+        <section className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <Nutrient label="Total Calories" value={`${totals.calories} kcal`} percent={78} />
+            <Nutrient label="Carbohydrates" value={`${totals.carbs}g`} percent={64} />
+            <Nutrient label="Protein" value={`${totals.protein}g`} percent={72} />
+            <Nutrient label="Fat" value={`${totals.fat}g`} percent={52} />
+            <Nutrient label="Fiber" value={`${totals.fiber}g`} percent={68} />
+            <Nutrient label="Water Target" value={totals.water} percent={80} />
           </div>
-          <div className="flex gap-3 w-full sm:w-auto">
-            <button type="button" onClick={() => router.back()} className="btn-outline">
-              Discard
+          <section className="rounded-2xl border border-warning/20 bg-warning/10 p-4 text-sm leading-relaxed text-surface-700">
+            Sodium target is reduced. Check chef-facing preparation guidance before publishing.
+          </section>
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="space-y-4">
+          <div className="card-medical rounded-2xl border-surface-100 p-5">
+            <label className="form-label">Patient-facing note</label>
+            <textarea value={patientNote} onChange={event => setPatientNote(event.target.value)} rows={4} className="input-medical rounded-2xl resize-none" />
+          </div>
+
+          <div className="card-medical rounded-2xl border-primary-100 bg-primary-50 p-5">
+            <div className="mb-3 flex items-center gap-2">
+              <ShieldCheck size={18} className="text-primary-600" />
+              <h2 className="text-sm font-black text-surface-900">Private clinical note</h2>
+            </div>
+            <textarea value={clinicalNote} onChange={event => setClinicalNote(event.target.value)} rows={5} className="input-medical rounded-2xl resize-none" />
+            <p className="mt-3 text-xs leading-relaxed text-primary-700">
+              This note is for dietitian use only. Patients and chefs receive only safe public or preparation instructions.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <button type="button" onClick={() => publishPlan('draft')} className="btn-outline flex items-center justify-center gap-2 rounded-2xl bg-white">
+              <Save size={17} />
+              Save Draft
             </button>
-            <button type="submit" className="btn-primary flex items-center gap-2">
-              <Save size={16} /> Deploy Meal Plan
+            <button type="button" onClick={() => publishPlan('active')} className="btn-primary flex items-center justify-center gap-2 rounded-2xl">
+              <Send size={17} />
+              Publish Plan
             </button>
           </div>
-        </div>
-      </form>
+        </section>
+      )}
+    </div>
+  );
+}
+
+function Nutrient({ label, value, percent }) {
+  return (
+    <div className="card-medical rounded-2xl border-surface-100 p-4">
+      <Flame size={18} className="text-primary-600" />
+      <p className="mt-4 text-xs font-black uppercase tracking-wider text-surface-400">{label}</p>
+      <p className="mt-1 text-xl font-black text-surface-900">{value}</p>
+      <div className="mt-3 h-2 overflow-hidden rounded-full bg-surface-100">
+        <div className="h-full rounded-full bg-primary-500" style={{ width: `${percent}%` }} />
+      </div>
     </div>
   );
 }

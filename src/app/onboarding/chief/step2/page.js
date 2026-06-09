@@ -85,6 +85,7 @@ export default function ChefStep2() {
 
   // ---------- restore saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('cc_onboarding_chef_step2') || '{}');
       if (saved.specializations) setSpecializations(saved.specializations);
@@ -95,6 +96,7 @@ export default function ChefStep2() {
       if (saved.languages) setLanguages(saved.languages);
       if (saved.philosophy) setPhilosophy(saved.philosophy);
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

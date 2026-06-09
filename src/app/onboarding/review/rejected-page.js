@@ -17,10 +17,12 @@ export default function RejectedPage() {
   const [role,   setRole]   = useState('professional');
 
   useEffect(() => {
-    const uid  = getCurrentUserId();
-    const user = uid ? getUserById(uid) : null;
-    if (user?.rejection_reason) setReason(user.rejection_reason);
-    if (user?.role) setRole(user.role);
+    queueMicrotask(() => {
+      const uid  = getCurrentUserId();
+      const user = uid ? getUserById(uid) : null;
+      if (user?.rejection_reason) setReason(user.rejection_reason);
+      if (user?.role) setRole(user.role);
+    });
   }, []);
 
   function handleReapply() {

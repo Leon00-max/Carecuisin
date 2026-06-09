@@ -10,7 +10,7 @@ export default function Error({ error, reset }) {
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center">
       <h2 className="text-2xl font-bold text-surface-900 mb-4">Something went wrong!</h2>
-      <p className="text-surface-600 mb-6">We're sorry, but an unexpected error occurred.</p>
+      <p className="text-surface-600 mb-6">We are sorry, but an unexpected error occurred.</p>
       <button
         onClick={() => reset()}
         className="btn-primary"

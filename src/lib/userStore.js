@@ -10,27 +10,18 @@
  * the real backend. The call-sites don't change.
  */
 
+import { readCollection, writeCollection } from './localDb';
+
 const USERS_KEY = 'cc_users';
 
 /* ─── Raw storage ─────────────────────────────────────────── */
 
 export function getUsers() {
-  if (typeof window === 'undefined') return [];
-  try {
-    return JSON.parse(localStorage.getItem(USERS_KEY) || '[]');
-  } catch (_) {
-    return [];
-  }
+  return readCollection(USERS_KEY);
 }
 
 function saveUsers(users) {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-  // Dispatch a storage event so other tabs / polling hooks
-  // can react immediately (pending-review page uses this).
-  window.dispatchEvent(new StorageEvent('storage', {
-    key:      USERS_KEY,
-    newValue: JSON.stringify(users),
-  }));
+  writeCollection(USERS_KEY, users);
 }
 
 /* ─── Reads ───────────────────────────────────────────────── */
@@ -61,6 +52,11 @@ export function getPendingProfessionals() {
  * Throws if email already exists.
  */
 export function createUser({ fullName, email, password, phone, role }) {
+  const allowedPublicRoles = ['patient', 'dietitian', 'chef'];
+  if (!allowedPublicRoles.includes(role)) {
+    throw new Error('This role cannot be created from public signup.');
+  }
+
   const users  = getUsers();
   const exists = users.find(
     u => u.email.toLowerCase() === email.toLowerCase()

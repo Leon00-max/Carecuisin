@@ -1,235 +1,280 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import {
+  AlertTriangle,
+  Calendar,
+  ChevronRight,
+  Filter,
+  Search,
+  ShieldCheck,
+  UserCog,
+  Users,
+} from 'lucide-react';
+import { getUsers, updateUser } from '@/lib/userStore';
+import { adminUsers } from '@/lib/adminPortalData';
+import { Avatar, Modal, PageHeader, SegmentedControl, StatusBadge } from '@/components/admin/AdminUI';
 
-/* ────────────────────────────────────────────────────────────
-   Helpers – read saved onboarding data & approval status
-─────────────────────────────────────────────────────────── */
-function getStableId(role) {
-  // Retrieve the stable ID we stored during onboarding (Step 3)
-  try {
-    const key = `cc_onboarding_${role}_id`;
-    return localStorage.getItem(key) || null;
-  } catch (_) {
-    return null;
-  }
-}
+const roleTabs = [
+  { key: 'all', label: 'All Users' },
+  { key: 'patient', label: 'Patients' },
+  { key: 'dietitian', label: 'Dietitians' },
+  { key: 'chef', label: 'Chefs' },
+];
 
-function getApprovalStatus(role, stableId) {
-  if (!stableId) return 'Pending';
-  const approved = JSON.parse(localStorage.getItem('cc_approved_users') || '[]');
-  const rejected = JSON.parse(localStorage.getItem('cc_rejected_users') || '[]');
-  if (approved.find(u => u.id === stableId && u.role === role)) return 'Approved';
-  if (rejected.find(u => u.id === stableId && u.role === role)) return 'Rejected';
-  return 'Pending';
-}
-
-function getPatients() {
-  try {
-    const step1 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step1') || '{}');
-    const step2 = JSON.parse(localStorage.getItem('cc_onboarding_patient_step2') || '{}');
-    if (!step1.fullName) return [];
-    const id = getStableId('patient') || 'P-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    return [{
-      id,
-      name: step1.fullName,
-      phone: step1.phone || '',
-      location: step1.location || '',
-      condition: step2.conditions?.[0] || 'Not specified',
-      status: getApprovalStatus('patient', id),
-    }];
-  } catch (_) {
-    return [];
-  }
-}
-
-function getDietitians() {
-  try {
-    const step1 = JSON.parse(localStorage.getItem('cc_onboarding_dietitian_step1') || '{}');
-    if (!step1.fullName) return [];
-    const id = getStableId('dietitian') || 'D-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    return [{
-      id,
-      name: step1.fullName,
-      qualification: step1.qualification || 'Not specified',
-      workplace: step1.workplace || 'Not specified',
-      status: getApprovalStatus('dietitian', id),
-    }];
-  } catch (_) {
-    return [];
-  }
-}
-
-function getChefs() {
-  try {
-    const step1 = JSON.parse(localStorage.getItem('cc_onboarding_chef_step1') || '{}');
-    if (!step1.fullName) return [];
-    const id = getStableId('chef') || 'C-' + Math.random().toString(36).substr(2, 6).toUpperCase();
-    return [{
-      id,
-      name: step1.fullName,
-      specialty: step1.specialDiets?.[0] || 'General',
-      location: step1.serviceArea || 'Unknown',
-      status: getApprovalStatus('chef', id),
-    }];
-  } catch (_) {
-    return [];
-  }
-}
-
-/* ────────────────────────────────────────────────────────────
-   Page Component
-─────────────────────────────────────────────────────────── */
 export default function UserManagement() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const role = searchParams.get('role') || 'patients';
+  const searchParams = useSearchParams();
+  const queryRole = normalizeRole(searchParams.get('role') || 'all');
+  const [search, setSearch] = useState('');
+  const [users, setUsers] = useState(() => loadUsers());
+  const [selected, setSelected] = useState(null);
+  const [suspendTarget, setSuspendTarget] = useState(null);
+  const [reason, setReason] = useState('');
 
-  const [users, setUsers] = useState([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const counts = useMemo(() => ({
+    patient: users.filter(user => user.role.toLowerCase() === 'patient').length,
+    dietitian: users.filter(user => user.role.toLowerCase() === 'dietitian').length,
+    chef: users.filter(user => user.role.toLowerCase() === 'chef').length,
+    admin: 12,
+  }), [users]);
 
-  useEffect(() => {
-    if (role === 'patients') setUsers(getPatients());
-    else if (role === 'dietitians') setUsers(getDietitians());
-    else if (role === 'chefs') setUsers(getChefs());
-  }, [role]);
+  const filtered = useMemo(() => users.filter(user => {
+    const roleMatches = queryRole === 'all' || user.role.toLowerCase() === queryRole;
+    const term = `${user.name} ${user.role} ${user.status} ${user.condition}`.toLowerCase();
+    return roleMatches && term.includes(search.toLowerCase());
+  }), [queryRole, search, users]);
 
-  // Real‑time filter
-  const filteredUsers = useMemo(() => {
-    return users.filter(user =>
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.id.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-  }, [users, searchQuery]);
+  function changeRole(role) {
+    router.push(role === 'all' ? '/admin/users' : `/admin/users?role=${role}`);
+  }
 
-  const handleTabChange = (newRole) => {
-    router.push(`?role=${newRole}`);
-  };
-
-  const tabs = [
-    { key: 'patients',   label: 'Patients' },
-    { key: 'dietitians', label: 'Dietitians' },
-    { key: 'chefs',      label: 'Chefs' },
-  ];
-
-  const statusBadge = (status) => {
-    switch (status) {
-      case 'Approved':
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-success" />
-            <span className="text-xs font-semibold text-success">Approved</span>
-          </div>
-        );
-      case 'Rejected':
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-alert" />
-            <span className="text-xs font-semibold text-alert">Rejected</span>
-          </div>
-        );
-      default:
-        return (
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-warning animate-pulse" />
-            <span className="text-xs font-semibold text-warning">Pending</span>
-          </div>
-        );
-    }
-  };
+  function confirmSuspension() {
+    if (!reason.trim() || !suspendTarget) return;
+    const isReal = getUsers().some(user => user.id === suspendTarget.id);
+    if (isReal) updateUser(suspendTarget.id, { account_status: 'suspended' });
+    setUsers(prev => prev.map(user => user.id === suspendTarget.id ? { ...user, status: 'Blocked' } : user));
+    setSuspendTarget(null);
+    setReason('');
+    if (selected?.id === suspendTarget.id) setSelected(prev => prev ? { ...prev, status: 'Blocked' } : prev);
+  }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <span className="badge-clinical mb-2 inline-block">Ecosystem Management</span>
-        <h1 className="text-2xl font-bold text-surface-900 capitalize">{role} Registry</h1>
-        <p className="text-sm text-surface-500 mt-1">
-          View and manage all registered {role} on the platform.
-        </p>
+    <div className="space-y-6 pb-4">
+      <PageHeader
+        eyebrow="Ecosystem Directory"
+        title="User Management"
+        subtitle="Browse patients, dietitians, chefs, and admins with role-specific safety context."
+        icon={Users}
+      />
+
+      <div className="grid grid-cols-[1fr_auto] gap-3">
+        <div className="relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
+          <input
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            className="input-medical pl-10"
+            placeholder="Search users..."
+          />
+        </div>
+        <button type="button" className="w-11 rounded-xl border border-surface-200 bg-white text-surface-500 hover:text-primary-600 hover:bg-primary-50 transition-colors flex items-center justify-center" aria-label="Filter users">
+          <Filter size={17} />
+        </button>
       </div>
 
-      {/* Search */}
-      <div className="relative w-full max-w-sm">
-        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-surface-400">🔍</span>
-        <input
-          type="text"
-          placeholder={`Search ${role}...`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="input-medical pl-12"
-        />
+      <SegmentedControl tabs={roleTabs} active={queryRole} onChange={changeRole} />
+
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        <CountCard label="Patients" value={counts.patient || 1003} />
+        <CountCard label="Dietitians" value={counts.dietitian || 67} />
+        <CountCard label="Chefs" value={counts.chef || 78} />
+        <CountCard label="Admins" value={counts.admin} />
       </div>
 
-      {/* Tabs */}
-      <div className="flex border-b border-surface-100 gap-6">
-        {tabs.map(tab => (
+      <div className="card-medical rounded-2xl !p-0 overflow-hidden">
+        {filtered.map(user => (
           <button
-            key={tab.key}
-            onClick={() => handleTabChange(tab.key)}
-            className={`pb-3 text-sm font-semibold transition-all capitalize ${
-              role === tab.key
-                ? 'text-primary-600 border-b-2 border-primary-500'
-                : 'text-surface-400 hover:text-surface-600'
-            }`}
+            type="button"
+            key={user.id}
+            onClick={() => setSelected(user)}
+            className="w-full text-left flex items-center gap-3 px-4 py-4 border-b border-surface-100 last:border-b-0 hover:bg-primary-50/40 transition-colors"
           >
-            {tab.label}
+            <Avatar name={user.name} tone={toneForStatus(user.status)} className="w-10 h-10 rounded-xl" />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-sm font-bold text-surface-900 truncate">{user.name}</p>
+                <StatusBadge tone={toneForStatus(user.status)}>{user.status}</StatusBadge>
+              </div>
+              <p className="text-xs text-surface-500 truncate">{user.role} - {user.condition}</p>
+            </div>
+            <div className="text-right shrink-0 hidden sm:block">
+              <p className="text-[11px] text-surface-400">{user.date}</p>
+            </div>
+            <ChevronRight size={16} className="text-surface-400 shrink-0" />
           </button>
         ))}
       </div>
 
-      {/* Table */}
-      <div className="card-medical overflow-hidden !p-0">
-        <table className="w-full text-left">
-          <thead className="bg-surface-50 border-b border-surface-100">
-            <tr>
-              <th className="px-6 py-4 text-xs font-semibold text-surface-700 uppercase tracking-wider">Identity</th>
-              <th className="px-6 py-4 text-xs font-semibold text-surface-700 uppercase tracking-wider">Details</th>
-              <th className="px-6 py-4 text-xs font-semibold text-surface-700 uppercase tracking-wider">Status</th>
-              <th className="px-6 py-4 text-xs font-semibold text-surface-700 uppercase tracking-wider text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-surface-50">
-            {filteredUsers.length === 0 && (
-              <tr>
-                <td colSpan={4} className="px-6 py-12 text-center text-sm text-surface-400">
-                  No {role} found.
-                </td>
-              </tr>
-            )}
-            {filteredUsers.map(user => (
-              <tr key={user.id} className="hover:bg-surface-50/50 transition-colors">
-                <td className="px-6 py-4">
-                  <p className="font-semibold text-surface-900">{user.name}</p>
-                  <p className="text-xs text-surface-400">{user.id}</p>
-                </td>
-                <td className="px-6 py-4">
-                  {role === 'patients' && (
-                    <span className="badge-clinical">{user.condition} · {user.location}</span>
-                  )}
-                  {role === 'dietitians' && (
-                    <div className="flex items-center gap-2">
-                      <span className="badge-clinical">{user.qualification}</span>
-                      <span className="text-xs text-surface-500">{user.workplace}</span>
-                    </div>
-                  )}
-                  {role === 'chefs' && (
-                    <span className="badge-clinical">{user.specialty} · {user.location}</span>
-                  )}
-                </td>
-                <td className="px-6 py-4">
-                  {statusBadge(user.status)}
-                </td>
-                <td className="px-6 py-4 text-right">
-                  <button className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-surface-50 text-surface-600 hover:bg-surface-100 transition-colors">
-                    View Profile
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      {selected && (
+        <Modal title="User Detail" onClose={() => setSelected(null)}>
+          <UserDetail user={selected} onSuspend={() => {
+            setSuspendTarget(selected);
+            setReason('');
+          }} />
+        </Modal>
+      )}
+
+      {suspendTarget && (
+        <Modal title="Confirm User Suspension" onClose={() => setSuspendTarget(null)}>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-alert/20 bg-alert/10 p-4">
+              <p className="text-sm font-bold text-alert flex items-center gap-2">
+                <AlertTriangle size={16} />
+                Suspension may affect active care workflows.
+              </p>
+              <p className="text-xs text-surface-700 mt-2">
+                Suspending a dietitian or chef can interrupt active patients, referrals, and meal preparation. Record a clear reason before continuing.
+              </p>
+            </div>
+            <textarea
+              className="input-medical min-h-24"
+              value={reason}
+              onChange={event => setReason(event.target.value)}
+              placeholder="Reason for suspension..."
+            />
+            <button
+              type="button"
+              disabled={!reason.trim()}
+              onClick={confirmSuspension}
+              className="w-full border border-alert/20 bg-alert text-white px-6 py-2.5 rounded-lg font-medium hover:opacity-90 transition-all disabled:opacity-40"
+            >
+              Suspend User
+            </button>
+          </div>
+        </Modal>
+      )}
+    </div>
+  );
+}
+
+function UserDetail({ user, onSuspend }) {
+  const role = user.role.toLowerCase();
+  const roleStats = role === 'patient'
+    ? [
+        ['Care Status', 'Active plan'],
+        ['Assigned Dietitian', 'Dr. Ambe Florence'],
+        ['Assigned Chef', 'Chef Kwame'],
+        ['Meal Progress', 'Week 3 of 8'],
+        ['Complaints', user.name === 'Amara Nkeng' ? '1 open' : 'None open'],
+      ]
+    : role === 'dietitian'
+      ? [
+          ['Verification', user.status],
+          ['Patients Assigned', '8'],
+          ['Plans Created', '24'],
+          ['Referrals Sent', '12'],
+          ['Rating', '4.9 from 156 reviews'],
+        ]
+      : [
+          ['Verification', user.status],
+          ['Kitchen', 'Buea, Fako'],
+          ['Orders Completed', '42'],
+          ['Active Referrals', '4'],
+          ['Reliability', '98% on time'],
+        ];
+
+  return (
+    <div className="space-y-5">
+      <div className="flex items-center gap-3 rounded-2xl border border-surface-100 bg-surface-50 p-4">
+        <Avatar name={user.name} tone={toneForStatus(user.status)} />
+        <div className="min-w-0">
+          <p className="text-base font-bold text-surface-900">{user.name}</p>
+          <p className="text-xs text-surface-500">{user.role} - {user.condition}</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {roleStats.map(([label, value]) => (
+          <div key={label} className="rounded-2xl border border-surface-100 p-3">
+            <p className="text-[11px] font-semibold text-surface-400">{label}</p>
+            <p className="text-sm font-bold text-surface-800 mt-1">{value}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="rounded-2xl border border-primary-100 bg-primary-50 p-4">
+        <p className="text-sm font-bold text-primary-700 flex items-center gap-2">
+          <ShieldCheck size={16} />
+          Account Activity
+        </p>
+        <p className="text-xs text-primary-700 mt-2">{user.detail}</p>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <button type="button" className="btn-outline flex items-center justify-center gap-2">
+          <Calendar size={16} />
+          Activity
+        </button>
+        <button type="button" className="btn-outline flex items-center justify-center gap-2">
+          <UserCog size={16} />
+          Reactivate
+        </button>
+        <button type="button" onClick={onSuspend} className="border border-alert/20 bg-alert/10 text-alert px-6 py-2.5 rounded-lg font-medium hover:bg-alert/15 transition-all flex items-center justify-center gap-2">
+          <AlertTriangle size={16} />
+          Suspend
+        </button>
       </div>
     </div>
   );
+}
+
+function CountCard({ label, value }) {
+  return (
+    <div className="rounded-2xl border border-surface-100 bg-white p-3 text-center shadow-sm">
+      <p className="text-lg font-bold text-surface-900">{value}</p>
+      <p className="text-[10px] font-semibold text-surface-500">{label}</p>
+    </div>
+  );
+}
+
+function toneForStatus(status) {
+  const normalized = String(status || '').toLowerCase();
+  if (normalized.includes('active') || normalized.includes('verified') || normalized.includes('approved')) return 'success';
+  if (normalized.includes('pending')) return 'warning';
+  if (normalized.includes('blocked') || normalized.includes('rejected')) return 'alert';
+  return 'neutral';
+}
+
+function normalizeRole(role) {
+  const normalized = String(role || 'all').toLowerCase();
+  if (normalized === 'patients') return 'patient';
+  if (normalized === 'dietitians') return 'dietitian';
+  if (normalized === 'chefs') return 'chef';
+  return ['all', 'patient', 'dietitian', 'chef'].includes(normalized) ? normalized : 'all';
+}
+
+function loadUsers() {
+  const stored = getUsers().map(user => ({
+    id: user.id,
+    name: user.fullName || user.email,
+    role: capitalize(user.role),
+    status: user.account_status === 'suspended'
+      ? 'Blocked'
+      : user.verification_status === 'approved'
+        ? user.role === 'patient' ? 'Active' : 'Verified'
+        : user.verification_status === 'rejected'
+          ? 'Rejected'
+          : 'Pending',
+    date: user.createdAt ? new Date(user.createdAt).toLocaleDateString('en-GB', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently',
+    condition: user.role === 'patient' ? 'Care profile' : user.role === 'dietitian' ? 'Clinical nutrition' : 'Kitchen operations',
+    detail: `${capitalize(user.role)} account managed from local CareCuisin store.`,
+  }));
+
+  return stored.length > 0 ? stored : adminUsers;
+}
+
+function capitalize(value) {
+  return String(value || '').charAt(0).toUpperCase() + String(value || '').slice(1);
 }

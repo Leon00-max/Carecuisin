@@ -1,80 +1,182 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, ClipboardList, LogOut, ChevronLeft, ChevronRight, Bell } from 'lucide-react';
-import { clearSession } from '@/lib/userStore';
+import {
+  Bell,
+  BarChart3,
+  ChefHat,
+  ClipboardList,
+  CreditCard,
+  History,
+  ListChecks,
+  LogOut,
+  PackageCheck,
+  ShieldCheck,
+  User,
+  Users,
+} from 'lucide-react';
+import BottomNav from '@/components/BottomNav';
+import { clearSession, getCurrentUser } from '@/lib/userStore';
 
-const NAV = [
-  { href:'/chef/dashboard', label:'Dashboard',      icon:Home },
-  { href:'/chef/history',   label:'Past Referrals', icon:ClipboardList   },
+const MAIN_NAV = [
+  { href: '/chef/dashboard', label: 'Orders', icon: PackageCheck },
+  { href: '/chef/queue', label: 'Queue', icon: ListChecks },
+  { href: '/chef/patients', label: 'Patients', icon: Users },
+  { href: '/chef/history', label: 'History', icon: History },
+  { href: '/chef/profile', label: 'Profile', icon: User },
 ];
 
-export default function ChefLayout({ children }) {
-  const pathname    = usePathname();
-  const router      = useRouter();
-  const [col, setCol] = useState(false);
+const SUPPORT_NAV = [
+  { href: '/chef/performance', label: 'Performance', icon: BarChart3 },
+  { href: '/chef/notifications', label: 'Notifications', icon: Bell },
+  { href: '/chef/earnings', label: 'Earnings', icon: CreditCard },
+];
 
-  function handleLogout() { clearSession(); router.push('/login'); }
+const ACTIVE_MAP = {
+  '/chef/order-details': '/chef/dashboard',
+  '/chef/delivery-confirmation': '/chef/queue',
+  '/chef/patient-assignment': '/chef/patients',
+  '/chef/performance': '/chef/profile',
+  '/chef/notifications': '/chef/profile',
+  '/chef/earnings': '/chef/profile',
+};
+
+export default function ChefLayout({ children }) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [chef, setChef] = useState(null);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      setChef(getCurrentUser());
+    });
+  }, []);
+
+  const chefName = chef?.fullName || 'Chef Kwame';
+  const initials = chefName
+    .split(' ')
+    .filter(Boolean)
+    .map(part => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'CH';
+
+  const handleLogout = () => {
+    clearSession();
+    router.push('/auth/login');
+  };
 
   return (
-    <div className="min-h-screen bg-surface-50 flex">
-      <aside className={`bg-white border-r border-surface-100 flex-col h-screen sticky top-0 transition-all duration-300 hidden sm:flex ${col?'w-20':'w-64'}`}>
-        <div className="flex items-center justify-between px-4 h-16 border-b border-surface-100 shrink-0">
-          <Link href="/chef/dashboard" className="flex items-center gap-2.5 min-w-0">
-            <span className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xs shrink-0">CC</span>
-            {!col&&<div className="min-w-0"><p className="text-sm font-bold text-surface-900 leading-none">CareCuisin</p><p className="text-xs text-emerald-500 mt-0.5">Chef Portal</p></div>}
-          </Link>
-          <button onClick={()=>setCol(!col)} className="w-6 h-6 rounded-md flex items-center justify-center text-surface-400 hover:text-emerald-600 hover:bg-emerald-50 transition-colors shrink-0">
-            {col?<ChevronRight size={14}/>:<ChevronLeft size={14}/>}
-          </button>
-        </div>
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {NAV.map(({href,label,icon:Icon})=>{
-            const active = pathname.startsWith(href);
-            return (
-              <Link key={href} href={href} title={col?label:undefined}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${active?'bg-emerald-50 text-emerald-700':'text-surface-600 hover:bg-surface-50 hover:text-surface-900'}`}>
-                <Icon size={18} strokeWidth={active?2.5:2} className={`shrink-0 ${active?'text-emerald-600':'text-surface-400'}`}/>
-                {!col&&<span className="flex-1 truncate">{label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-        <div className="px-3 pb-4 pt-3 border-t border-surface-100 space-y-1 shrink-0">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-surface-50 transition-colors">
-            <Bell size={18} className="text-surface-400 shrink-0"/>{!col&&<span>Notifications</span>}
-          </button>
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-surface-600 hover:bg-red-50 hover:text-red-600 transition-colors group">
-            <LogOut size={18} className="text-surface-400 group-hover:text-red-500 shrink-0"/>{!col&&<span>Log out</span>}
-          </button>
-          {!col&&(
-            <div className="flex items-center gap-3 px-3 py-3 mt-1 bg-surface-50 rounded-xl">
-              <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs shrink-0">CH</div>
-              <div className="flex-1 min-w-0">
-                <p className="text-xs font-semibold text-surface-800 truncate">Chef</p>
-                <p className="text-xs text-surface-400 truncate">Buea</p>
+    <div className="min-h-screen bg-surface-50 text-surface-800">
+      <div className="mx-auto flex min-h-screen w-full max-w-7xl">
+        <aside className="hidden w-64 shrink-0 flex-col justify-between border-r border-surface-100 bg-white/90 p-6 md:flex">
+          <div className="space-y-8">
+            <Link href="/chef/dashboard" className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-primary-600 text-sm font-black text-white shadow-sm shadow-primary-200">
+                CC
+              </span>
+              <div>
+                <p className="text-sm font-black leading-none text-surface-900">CareCuisin</p>
+                <p className="mt-1 text-[10px] font-bold uppercase tracking-wider text-primary-600">
+                  Chef command
+                </p>
               </div>
-              <span className="w-2 h-2 rounded-full bg-green-400 shrink-0"/>
+            </Link>
+
+            <div className="card-medical rounded-2xl border-surface-100 p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary-50 text-sm font-black text-primary-700">
+                  {initials}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-surface-900">{chefName}</p>
+                  <p className="mt-1 flex items-center gap-1.5 text-[10px] font-semibold text-success">
+                    <span className="h-1.5 w-1.5 rounded-full bg-success ring-4 ring-success/10" />
+                    Verified kitchen
+                  </p>
+                </div>
+              </div>
             </div>
-          )}
-        </div>
-      </aside>
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="sm:hidden bg-white border-b border-surface-100 px-4 h-14 flex items-center justify-between sticky top-0 z-40">
-          <Link href="/chef/dashboard" className="flex items-center gap-2">
-            <span className="w-7 h-7 bg-emerald-600 rounded-lg flex items-center justify-center text-white font-bold text-xs">CC</span>
-            <span className="text-sm font-bold text-surface-900">Chef</span>
-          </Link>
-          <nav className="flex items-center gap-1">
-            {NAV.map(({href,icon:Icon})=>(
-              <Link key={href} href={href} className={`p-2 rounded-lg ${pathname.startsWith(href)?'text-emerald-600 bg-emerald-50':'text-surface-400'}`}><Icon size={18}/></Link>
-            ))}
-          </nav>
-        </header>
-        <main className="flex-1 p-4 sm:p-8 max-w-5xl mx-auto w-full">{children}</main>
+
+            <nav className="space-y-1">
+              {MAIN_NAV.map(item => (
+                <NavLink key={item.href} item={item} pathname={pathname} />
+              ))}
+            </nav>
+
+            <div className="border-t border-surface-100 pt-5">
+              <p className="px-4 text-[10px] font-black uppercase tracking-wider text-surface-400">
+                Operations
+              </p>
+              <nav className="mt-3 space-y-1">
+                {SUPPORT_NAV.map(item => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-surface-500 transition-colors hover:bg-surface-50 hover:text-surface-900"
+                    >
+                      <Icon size={18} className="text-surface-400" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
+              </nav>
+            </div>
+          </div>
+
+          <div className="space-y-4 border-t border-surface-100 pt-5">
+            <div className="rounded-2xl border border-success/20 bg-success/10 p-4">
+              <div className="flex items-center gap-2 text-xs font-black text-success">
+                <ShieldCheck size={15} />
+                Clinical prep only
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-surface-500">
+                You see approved preparation instructions, not private medical rationale.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="flex w-full items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold text-surface-500 transition-colors hover:bg-alert/10 hover:text-alert"
+            >
+              <LogOut size={17} />
+              Sign out
+            </button>
+          </div>
+        </aside>
+
+        <main className="min-w-0 flex-1 overflow-y-auto p-4 pb-24 md:p-8">
+          {children}
+        </main>
       </div>
+
+      <BottomNav role="chef" />
     </div>
+  );
+}
+
+function NavLink({ item, pathname }) {
+  const activePath = ACTIVE_MAP[pathname] || pathname;
+  const active = activePath === item.href;
+  const Icon = item.icon;
+
+  return (
+    <Link
+      href={item.href}
+      className={`flex items-center gap-3 rounded-2xl px-4 py-3 text-sm font-semibold transition-colors ${
+        active
+          ? 'bg-primary-50 text-primary-700 shadow-sm shadow-primary-100'
+          : 'text-surface-500 hover:bg-surface-50 hover:text-surface-900'
+      }`}
+    >
+      <Icon size={18} className={active ? 'text-primary-600' : 'text-surface-400'} />
+      <span>{item.label}</span>
+      {active && <span className="ml-auto h-2 w-2 rounded-full bg-primary-500 ring-4 ring-primary-100" />}
+    </Link>
   );
 }

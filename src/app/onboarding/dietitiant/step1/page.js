@@ -108,6 +108,7 @@ export default function DietitianStep1() {
 
   // Pre‑fill from signup or restored step1 data
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const signup = JSON.parse(localStorage.getItem('cc_signup') || '{}');
       if (signup.fullName) setFullName(signup.fullName);
@@ -139,6 +140,7 @@ export default function DietitianStep1() {
       if (saved.licenseFileName) setLicenseFile({ name: saved.licenseFileName });
       if (saved.cvFileName) setCvFile({ name: saved.cvFileName });
     } catch (_) {}
+    });
   }, []);
 
   // ---------- file change handler ----------

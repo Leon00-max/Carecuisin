@@ -54,6 +54,7 @@ export default function DietitianStep3() {
 
   // ---------- restore saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = JSON.parse(localStorage.getItem('cc_onboarding_dietitian_step3') || '{}');
       if (saved.consultationType) setConsultationType(saved.consultationType);
@@ -70,6 +71,7 @@ export default function DietitianStep3() {
       if (saved.signedTerms) setSignedTerms(saved.signedTerms);
       if (saved.dataPrivacy) setDataPrivacy(saved.dataPrivacy);
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------

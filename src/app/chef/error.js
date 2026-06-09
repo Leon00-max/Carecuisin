@@ -1,22 +1,16 @@
 'use client';
 
-import { useEffect } from 'react';
+import { AlertCircle } from 'lucide-react';
 
-export default function Error({ error, reset }) {
-  useEffect(() => {
-    console.error(error);
-  }, [error]);
-
+export default function Error({ reset }) {
   return (
-    <div className="flex flex-col items-center justify-center min-h-[400px] p-6 text-center">
-      <h2 className="text-2xl font-bold text-surface-900 mb-4">Something went wrong!</h2>
-      <p className="text-surface-600 mb-6">We're sorry, but an unexpected error occurred.</p>
-      <button
-        onClick={() => reset()}
-        className="btn-primary"
-      >
-        Try again
-      </button>
+    <div className="card-medical mx-auto max-w-xl rounded-2xl border-alert/20 p-6 text-center">
+      <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-alert/10 text-alert">
+        <AlertCircle size={24} />
+      </div>
+      <h2 className="mt-5 text-lg font-black text-surface-900">Chef portal could not load</h2>
+      <p className="mt-2 text-sm text-surface-500">Please retry the page.</p>
+      <button type="button" onClick={reset} className="btn-primary mt-5">Try again</button>
     </div>
   );
 }

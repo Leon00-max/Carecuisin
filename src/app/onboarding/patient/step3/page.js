@@ -61,6 +61,7 @@ export default function PatientStep3() {
 
   // ---------- pre‑fill from saved data ----------
   useEffect(() => {
+    queueMicrotask(() => {
     try {
       const saved = localStorage.getItem('cc_onboarding_patient_step3');
       if (saved) {
@@ -78,6 +79,7 @@ export default function PatientStep3() {
         if (d.finalNotes) setFinalNotes(d.finalNotes);
       }
     } catch (_) {}
+    });
   }, []);
 
   // ---------- helpers ----------
